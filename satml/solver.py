@@ -70,8 +70,11 @@ def simplify(an_exp):
         return expr((Type.NOT, simplify(an_exp.l_val), None))
 
 
-def satisfiable(an_exp):
+def satisfiable(an_exp, branch_all=False):
     """SAT solving (modulo model for unsat, TODO)"""
+    if branch_all:
+        return _satisfiable_branch_all(an_exp)
+
     free_v = list(free(an_exp))
     # Solved.
     if not free_v:
@@ -85,3 +88,48 @@ def satisfiable(an_exp):
     false = simplify(branch_on_variable(an_exp, split, False))
 
     return satisfiable(true) or satisfiable(false)
+
+
+def _satisfiable_branch_all(an_exp):
+    """
+    Instead of picking a branch at each level, branch
+    on all variables, report back what was locally best.
+
+    (The "best" metric is how many times have we branched after
+     this decision, using the same greedy method.)
+
+    `sat :: an_exp -> sat, var, num_branches, history`
+    """
+    free_v = list(free(an_exp))
+    if not free_v:
+        if an_exp.typ == Type.CONST:
+            return bool(an_exp.l_val), None, 0, set()
+        else:
+            raise ValueError('Reduced to {}?'.format(pprint(an_exp)))
+
+    sat, best_var, num_branches, history = False, None, float('inf'), None
+    for var in free_v:
+        true = simplify(branch_on_variable(an_exp, var, True))
+        false = simplify(branch_on_variable(an_exp, var, False))
+
+        # Try branching with T.
+        sat_t, _, num_t, history = _satisfiable_branch_all(true)
+        num_t_p = num_t + 1  # Count this branch.
+        if sat_t and num_t_p < num_branches:
+            best_var = var
+            num_branches = num_t_p
+        else:
+            # If T didn't work, continue with F.
+            sat_f, _, num_f, hist_f = _satisfiable_branch_all(false)
+            # Take note of the history of this branch.
+            history = history.union(hist_f)
+            num_f_p = num_t + num_f + 2  # Count these branches.
+
+            if num_f_p < num_branches:
+                best_var = var
+                num_branches = num_f_p
+
+        sat = sat_t or sat_f
+
+    cur_hist_entry = (an_exp, sat, best_var, num_branches)
+    return sat, best_var, num_branches, history.union({cur_hist_entry})

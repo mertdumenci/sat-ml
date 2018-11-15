@@ -5,6 +5,7 @@ from satml.dimacs import from_dimacs
 
 import itertools
 import os
+import pickle
 
 
 x_y_z = expr((Type.OR, 'x', (Type.AND, 'y', 'z')))
@@ -143,10 +144,44 @@ p cnf 24 66
 # print(satisfiable(from_dimacs(SOLVABLE_DIMACS_TEST_2)))
 # print(satisfiable(from_dimacs(UNSOLVABLE_DIMACS_TEST_2)))
 
-for pigeons, holes in itertools.product(range(1, 10), repeat=2):
-    program = 'cnfgen php {} {}'.format(pigeons, holes)
-    formula = from_dimacs(os.popen(program).read())
-    ground_truth = pigeons <= holes
-    sat_truth = satisfiable(formula)
 
-    print("{}, {}: Ground {}, SAT {}".format(pigeons, holes, ground_truth, sat_truth))
+def pigeonhole(pigeons, holes):
+    program = 'cnfgen php {} {}'.format(pigeons, holes)
+    return from_dimacs(os.popen(program).read())
+
+# for pigeons, holes in itertools.product(range(1, 10), repeat=2):
+#     formula = pigeonhole(pigeons, holes)
+#     ground_truth = pigeons <= holes
+#     sat_truth = satisfiable(formula)
+#
+#     print("{}, {}: Ground {}, SAT {}".format(pigeons, holes, ground_truth, sat_truth))
+#
+
+
+def run_extended(an_exp):
+    def _print_info(history_entry):
+        e, s, v, n = history_entry
+        print("Formula: {}\n{} where best variable was {} with {} branches.".format(
+            pprint(e),
+            "Satisfiable" if s else "Unsatisfiable",
+            v,
+            n
+        ))
+
+    sat, best_var, num_b, hist = satisfiable(an_exp, branch_all=True)
+    _print_info((an_exp, sat, best_var, num_b))
+    print("\nHISTORY:")
+    for history_entry in hist:
+        _print_info(history_entry)
+
+    return hist
+
+
+all_history = set()
+for pigeons, holes in itertools.product(range(1, 4), repeat=2):
+    formula = pigeonhole(pigeons, holes)
+    ground_truth = pigeons <= holes
+    all_history.union(run_extended(formula))
+
+with open('all_history.pickle', 'wb') as f:
+    pickle.dump(all_history, f)
