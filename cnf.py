@@ -3,6 +3,9 @@ from satml.expression import pprint, Type, cnf, expr
 from satml.solver import satisfiable, simplify
 from satml.dimacs import from_dimacs
 
+import itertools
+import os
+
 
 x_y_z = expr((Type.OR, 'x', (Type.AND, 'y', 'z')))
 x_y_z_c = cnf(x_y_z)
@@ -10,11 +13,11 @@ x_y_z_c = cnf(x_y_z)
 complex_1 = expr((Type.OR, 'a', (Type.NOT, (Type.AND, 'b', (Type.OR, 'a', 'c')), None)))
 complex_1_c = cnf(complex_1)
 
-print(pprint(x_y_z))
-print(pprint(x_y_z_c))
+# print(pprint(x_y_z))
+# print(pprint(x_y_z_c))
 
-print(pprint(complex_1))
-print(pprint(complex_1_c))
+# print(pprint(complex_1))
+# print(pprint(complex_1_c))
 
 
 # print(satisfiable(expr((Type.OR, 'x', '-x'))))
@@ -136,6 +139,14 @@ p cnf 24 66
 -20 -24 0
 """
 
-print(satisfiable(from_dimacs(SOLVABLE_DIMACS_TEST)))
-print(satisfiable(from_dimacs(SOLVABLE_DIMACS_TEST_2)))
-print(satisfiable(from_dimacs(UNSOLVABLE_DIMACS_TEST_2)))
+# print(satisfiable(from_dimacs(SOLVABLE_DIMACS_TEST)))
+# print(satisfiable(from_dimacs(SOLVABLE_DIMACS_TEST_2)))
+# print(satisfiable(from_dimacs(UNSOLVABLE_DIMACS_TEST_2)))
+
+for pigeons, holes in itertools.product(range(1, 10), repeat=2):
+    program = 'cnfgen php {} {}'.format(pigeons, holes)
+    formula = from_dimacs(os.popen(program).read())
+    ground_truth = pigeons <= holes
+    sat_truth = satisfiable(formula)
+
+    print("{}, {}: Ground {}, SAT {}".format(pigeons, holes, ground_truth, sat_truth))
