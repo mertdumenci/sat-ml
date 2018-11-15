@@ -24,7 +24,7 @@ def pprint(an_exp: _Expression):
         typ, l_val, r_val = exp.typ, exp.l_val, exp.r_val
 
         if typ == Type.CONST:
-            return '1' if l_val else '0'
+            return 'T' if l_val else 'F'
         if typ == Type.VAR:
             return l_val
         if typ == Type.NOT:
@@ -34,9 +34,7 @@ def pprint(an_exp: _Expression):
             pprint_s(l_val), _TYPE_PRINT[typ], pprint_s(r_val)
         )
 
-    pp = pprint_s(an_exp)
-    print(pp)
-    return pp
+    return pprint_s(an_exp)
 
 
 def expr(tpl) -> _Expression:
@@ -148,6 +146,10 @@ def free(an_exp: _Expression):
 
     typ = an_exp.typ
     if typ == Type.VAR:
-        return set(an_exp.l_val)
+        # Python treats the string as an iterator and splits it to its char when put into the ctor.
+        s = set()
+        s.add(an_exp.l_val)
+
+        return s
 
     return free(an_exp.l_val).union(free(an_exp.r_val))

@@ -1,7 +1,7 @@
 
 
 import random
-from satml.expression import free, expr, Type, _Expression
+from satml.expression import free, expr, Type, _Expression, pprint
 
 
 def branch_on_variable(an_exp, var, val):
@@ -25,8 +25,8 @@ def branch_on_variable(an_exp, var, val):
     ))
 
 
-_FALSE = expr((Type.CONST, 0, None))
-_TRUE = expr((Type.CONST, 1, None))
+_FALSE = expr(False)
+_TRUE = expr(True)
 
 
 def simplify(an_exp):
@@ -34,25 +34,31 @@ def simplify(an_exp):
     typ = an_exp.typ
 
     if typ == Type.OR:
-        if an_exp.l_val == _TRUE or an_exp.r_val == _TRUE:
+        s_l_val = simplify(an_exp.l_val)
+        s_r_val = simplify(an_exp.r_val)
+
+        if s_l_val == _TRUE or s_r_val == _TRUE:
             return _TRUE
-        elif an_exp.l_val != _FALSE and an_exp.r_val != _FALSE:
-            return expr((typ, simplify(an_exp.l_val), simplify(an_exp.r_val)))
-        elif an_exp.l_val != _FALSE and an_exp.r_val == _FALSE:
-            return simplify(an_exp.l_val)
-        elif an_exp.l_val == _FALSE and an_exp.r_val != _FALSE:
-            return simplify(an_exp.r_val)
+        elif s_l_val != _FALSE and s_r_val != _FALSE:
+            return expr((typ, s_l_val, s_r_val))
+        elif s_l_val != _FALSE and s_r_val == _FALSE:
+            return s_l_val
+        elif s_l_val == _FALSE and s_r_val != _FALSE:
+            return s_r_val
         else:
             return _FALSE
     elif typ == Type.AND:
-        if an_exp.l_val == _FALSE or an_exp.r_val == _FALSE:
+        s_l_val = simplify(an_exp.l_val)
+        s_r_val = simplify(an_exp.r_val)
+
+        if s_l_val == _FALSE or s_r_val == _FALSE:
             return _FALSE
-        elif an_exp.l_val != _TRUE and an_exp.r_val != _TRUE:
-            return expr((typ, simplify(an_exp.l_val), simplify(an_exp.r_val)))
-        elif an_exp.l_val != _TRUE and an_exp.r_val == _TRUE:
-            return simplify(an_exp.l_val)
-        elif an_exp.l_val == _TRUE and an_exp.r_val != _TRUE:
-            return simplify(an_exp.r_val)
+        elif s_l_val != _TRUE and s_r_val != _TRUE:
+            return expr((typ, s_l_val, s_r_val))
+        elif s_l_val != _TRUE and s_r_val == _TRUE:
+            return s_l_val
+        elif s_l_val == _TRUE and s_r_val != _TRUE:
+            return s_r_val
         else:
             return _TRUE
     elif typ == Type.CONST or typ == Type.VAR:
@@ -69,11 +75,13 @@ def satisfiable(an_exp):
     free_v = list(free(an_exp))
     # Solved.
     if not free_v:
-        return bool(an_exp.l_val)
+        if an_exp.typ == Type.CONST:
+            return bool(an_exp.l_val)
+        else:
+            raise ValueError('Reduced to {}?'.format(pprint(an_exp)))
 
     split = random.choice(free_v)
-    true = simplify(branch_on_variable(an_exp, split, 1))
-    false = simplify(branch_on_variable(an_exp, split, 0))
+    true = simplify(branch_on_variable(an_exp, split, True))
+    false = simplify(branch_on_variable(an_exp, split, False))
 
     return satisfiable(true) or satisfiable(false)
-
