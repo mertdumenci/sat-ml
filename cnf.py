@@ -170,18 +170,35 @@ def run_extended(an_exp):
 
     sat, best_var, num_b, hist = satisfiable(an_exp, branch_all=True)
     _print_info((an_exp, sat, best_var, num_b))
-    print("\nHISTORY:")
-    for history_entry in hist:
-        _print_info(history_entry)
 
     return hist
 
 
-all_history = set()
-for pigeons, holes in itertools.product(range(1, 4), repeat=2):
-    formula = pigeonhole(pigeons, holes)
-    ground_truth = pigeons <= holes
-    all_history.union(run_extended(formula))
+def random_cnf(width, n_var, n_clauses):
+    program = 'cnfgen randkcnf {} {} {}'.format(width, n_var, n_clauses)
+    return from_dimacs(os.popen(program).read())
 
+
+# all_history = set()
+# for pigeons, holes in itertools.product(range(1, 4), repeat=2):
+#     formula = pigeonhole(pigeons, holes)
+#     ground_truth = pigeons <= holes
+#     all_history = all_history.union(run_extended(formula))
+
+import random
+
+all_history = set()
+NUM_FORMULAS = 50000
+
+for i in range(NUM_FORMULAS):
+    if len(all_history) >= NUM_FORMULAS:
+        break
+
+    formula = random_cnf(3, random.choice([5, 6, 7, 8]), 50)
+    print("Running {}/{}".format(i + 1, NUM_FORMULAS))
+    all_history = all_history.union(run_extended(formula))
+    print("Now have {} formulas".format(len(all_history)))
+
+print("Generated {} examples.".format(len(all_history)))
 with open('all_history.pickle', 'wb') as f:
     pickle.dump(all_history, f)
