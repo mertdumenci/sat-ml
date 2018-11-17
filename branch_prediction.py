@@ -111,7 +111,9 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 print('Building model...')
 model = Sequential([
     Embedding(num_features, 128),
-    LSTM(128, dropout=0.2, recurrent_dropout=0.2),
+    LSTM(128, dropout=0.2, recurrent_dropout=0.2, return_sequences=True),
+    LSTM(80, dropout=0.2, recurrent_dropout=0.2, return_sequences=True),
+    LSTM(40, dropout=0.2, recurrent_dropout=0.2),
     Dense(num_labels, activation='softmax')
 ])
 
