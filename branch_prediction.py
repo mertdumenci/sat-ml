@@ -122,7 +122,7 @@ model.summary()
 
 model.fit(X_train, y_train,
           batch_size=batch_size,
-          epochs=15,
+          epochs=6,
           validation_data=(X_test, y_test))
 score, acc = model.evaluate(X_test, y_test, batch_size=batch_size)
 
