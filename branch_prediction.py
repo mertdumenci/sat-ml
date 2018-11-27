@@ -11,6 +11,7 @@ from   tensorflow.keras.layers                 import Dense, Embedding, LSTM
 
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.dummy           import DummyClassifier
 
 
 def rename_vars(an_exp):
@@ -97,6 +98,15 @@ for expression, _, best_branch, _ in all_history:
     sequences.append(encoded)
     labels.append(mapped_best_branch)
 
+# import matplotlib
+# matplotlib.use("TkAgg")
+# import matplotlib.pyplot as plt
+# plt.hist(np.array(labels))
+# plt.title("Best variables")
+# plt.xlabel("Variable")
+# plt.ylabel("Number of formulas")
+# plt.show()
+
 X = pad_sequences(sequences)
 y = to_categorical(np.array(labels))
 
@@ -119,6 +129,11 @@ model = Sequential([
 
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 model.summary()
+
+dummy_c = DummyClassifier()
+dummy_c.fit(X_train, y_train)
+dummy_s = dummy_c.score(X_test, y_test)
+print('Dummy classifier score: {}'.format(dummy_s))
 
 model.fit(X_train, y_train,
           batch_size=batch_size,
