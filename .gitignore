@@ -105,3 +105,9 @@ venv.bak/
 
 # vscode
 .vscode/
+
+# macOS
+.DS_Store
+
+# `sat-ml` data.
+data/
