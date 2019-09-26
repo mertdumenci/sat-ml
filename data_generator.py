@@ -3,6 +3,7 @@
 Generates data for the training process.
 """
 
+import sys
 import torch
 from torch.utils import data
 from typing import List, Tuple
@@ -15,18 +16,27 @@ import satml.solver
 def expand_history(
     formula: expression.Expression,
     history: types.DecisionHistory) -> List[Tuple[int, bool, expression.Expression]]:
-    print("[info] Expanding history for {}: {}".format(expression.pprint(formula), history))
-
     expanded_history = []
+    effective_decisions = 0
     cur_formula = formula
 
     for var, decision in history:
         # My expression library only accepts string variables.
         var = str(var)
 
-        # The point in the decision history belongs to the previous formula
+        # Skip if this is a no-op decision.
+        if var not in expression.free(cur_formula):
+            continue
+
+        effective_decisions += 1
+        # The point in the decision history belongs to the previous formula.
         expanded_history.append((var, decision, cur_formula))
+        # print("{} = {} for formula: {}".format(var, decision, expression.pprint(cur_formula)))
         cur_formula = expression.simplify(expression.assign(cur_formula, var, decision))
+
+    # Add the fully reduced formula.
+    expanded_history.append((None, None, cur_formula))
+    print("DONE ({} decisions, {} variables): {}".format(effective_decisions, len(expression.free(formula)), expression.pprint(cur_formula)))
 
     return expanded_history
 
@@ -61,7 +71,7 @@ class HeuristicSamples(data.Dataset):
     def __getitem__(self, i) -> Tuple[expression.Expression, Tuple[int, bool]]:
         if len(self.next_k) == 0:
             # Generate random satisfiable formula
-            dimacs, (_, history) = generator.generate_random(
+            dimacs, f, (_, history) = generator.generate_random(
                 self.clause_width,
                 self.max_num_vars,
                 self.max_num_clauses,
@@ -69,8 +79,7 @@ class HeuristicSamples(data.Dataset):
                 solver=self.solver
             )
 
-            # Parse out Dimacs, expand history
-            f = expression.from_dimacs(dimacs)
+            # print("DIMACS:\n{}".format(dimacs))
             self.next_k = expand_history(f, history)
 
         var, decision, f = self.next_k.pop(0)
@@ -78,10 +87,16 @@ class HeuristicSamples(data.Dataset):
 
 
 if __name__ == '__main__':
+    sys.setrecursionlimit(10000)
+    
     solver = cryptominisat.Cryptominisat()
-    samples = HeuristicSamples(solver, 5, 3, 10, 5)
+    samples = HeuristicSamples(
+        solver,
+        num_formulas=1,
+        clause_width=3,
+        max_num_vars=20,
+        max_num_clauses=1000
+    )
 
-    for i in range(5):
-        f, (var, decision) = samples[i]
-
-        print("{} = {} for formula: {}".format(var, decision, expression.pprint(f)))
+    for i in range(1000):
+        samples[i]

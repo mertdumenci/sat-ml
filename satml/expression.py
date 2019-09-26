@@ -6,7 +6,7 @@ Implementation of a CNF formula.
 import enum
 import collections
 import functools
-from typing import Set, Any
+from typing import Set, Any, Tuple
 
 from satml import types
 
@@ -14,6 +14,24 @@ from satml import types
 Type = enum.Enum('Type', 'VAR AND OR NOT CONST')
 """A CNF expression."""
 Expression = collections.namedtuple('Expression', 'typ l_val r_val')
+
+
+def rename(exp: Expression, var_map=None) -> Expression:
+    """Renames all variables in first order of occurrence in the expression AST."""
+    if isinstance(exp, str):
+        if exp in var_map:
+            return str(var_map[exp])
+        else:
+            max_name = max(var_map.values()) if len(var_map) > 0 else 0
+            var_map[exp] = max_name + 1
+        
+            return str(max_name + 1)
+    elif isinstance(exp, Expression):
+        typ, l_val, r_val = exp
+        var_map = var_map if var_map is not None else {}
+        return Expression(typ, rename(l_val, var_map), rename(r_val, var_map))
+    else:
+        return exp
 
 
 def fixpoint(arg, func, comp):
@@ -192,6 +210,52 @@ def from_dimacs(string: types.Dimacs) -> Expression:
         clauses[1:],
         clauses[0]
     )
+
+
+def to_dimacs(exp: Expression) -> types.Dimacs:
+    """Makes a Dimacs CNF file."""
+    exp = simplify(cnf(exp))
+
+    lines, num_ands = _to_dimacs(exp)
+    num_conjuncts = num_ands + 1
+
+    # Assemble lines (by adding line delimiters)
+    dimacs = '\n'.join([line + ' 0' for line in lines])
+    
+    # Write out the header.
+    num_variables = len(free(exp))
+    header = "p cnf {} {}\n".format(num_variables, num_conjuncts)
+
+    return header + dimacs
+
+
+def _to_dimacs(exp: Expression) -> Tuple[types.Dimacs, int]:
+    """Internal interface for dimacs conversion."""
+    # Unpack the expression.
+    assert isinstance(exp, Expression)
+    typ, l_val, r_val = exp
+    assert typ != Type.CONST
+
+    if typ == Type.VAR:
+        return str(l_val), 0
+    if typ == Type.NOT:
+        assert l_val.typ == Type.VAR
+        return '-' + str(l_val.l_val), 0
+    if typ == Type.AND:
+        l1, n1 = _to_dimacs(l_val)
+        l2, n2 = _to_dimacs(r_val)
+
+        if not isinstance(l1, list):
+            l1 = [l1]
+        if not isinstance(l2, list):
+            l2 = [l2]
+
+        return l1 + l2, n1 + n2 + 1
+    if typ == Type.OR:
+        return ' '.join([_to_dimacs(l_val)[0], _to_dimacs(r_val)[0]]), 0
+
+    assert False, "Should never reach here"    
+    return None
 
 
 def assign(an_exp, var, val):
