@@ -6,6 +6,8 @@ from satml.dimacs import from_dimacs
 import itertools
 import os
 import pickle
+import subprocess
+import multiprocessing
 
 
 x_y_z = expr((Type.OR, 'x', (Type.AND, 'y', 'z')))
@@ -140,65 +142,106 @@ p cnf 24 66
 -20 -24 0
 """
 
-# print(satisfiable(from_dimacs(SOLVABLE_DIMACS_TEST)))
-# print(satisfiable(from_dimacs(SOLVABLE_DIMACS_TEST_2)))
-# print(satisfiable(from_dimacs(UNSOLVABLE_DIMACS_TEST_2)))
-
 
 def pigeonhole(pigeons, holes):
     program = 'cnfgen php {} {}'.format(pigeons, holes)
     return from_dimacs(os.popen(program).read())
 
-# for pigeons, holes in itertools.product(range(1, 10), repeat=2):
-#     formula = pigeonhole(pigeons, holes)
-#     ground_truth = pigeons <= holes
-#     sat_truth = satisfiable(formula)
-#
-#     print("{}, {}: Ground {}, SAT {}".format(pigeons, holes, ground_truth, sat_truth))
-#
-
 
 def run_extended(an_exp):
+    print("On expression: {}".format(pprint(an_exp)))
+
     def _print_info(history_entry):
-        e, s, v, n = history_entry
-        print("Formula: {}\n{} where best variable was {} with {} branches.".format(
+        e, s, v, a, n = history_entry
+        print("Formula: {}\n{} where best variable was {} = {} with {} branches.".format(
             pprint(e),
             "Satisfiable" if s else "Unsatisfiable",
             v,
+            a,
             n
         ))
 
-    sat, best_var, num_b, hist = satisfiable(an_exp, branch_all=True)
-    _print_info((an_exp, sat, best_var, num_b))
+    sat, best_var, assignment, num_b, hist = satisfiable(an_exp, branch_all=True)
+    _print_info((an_exp, sat, best_var, assignment, num_b))
+
+    # Filter history to only contain satisfiable formulas. We don't care about anything else.
+    hist = [(e, s, v, a, n) for e, s, v, a, n in hist if s == True]
 
     return hist
 
 
-def random_cnf(width, n_var, n_clauses):
+def random_dimacs_cnf(width, n_var, n_clauses):
     program = 'cnfgen randkcnf {} {} {}'.format(width, n_var, n_clauses)
-    return from_dimacs(os.popen(program).read())
+    return os.popen(program).read()
 
 
-# all_history = set()
-# for pigeons, holes in itertools.product(range(1, 4), repeat=2):
-#     formula = pigeonhole(pigeons, holes)
-#     ground_truth = pigeons <= holes
-#     all_history = all_history.union(run_extended(formula))
+def fast_check_sat(dimacs):
+    sat = subprocess.Popen(
+        ["cryptominisat5", "--verb", "0"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE
+    )
 
-import random
+    out, err = sat.communicate(input=dimacs.encode())
+    return sat.returncode == 10
 
-all_history = set()
-NUM_FORMULAS = 50000
 
-for i in range(NUM_FORMULAS):
-    if len(all_history) >= NUM_FORMULAS:
-        break
+def random_satisfiable_cnf(width, n_var, n_clauses):
+    cnf = None
 
-    formula = random_cnf(3, random.choice([5, 6, 7, 8]), 50)
-    print("Running {}/{}".format(i + 1, NUM_FORMULAS))
-    all_history = all_history.union(run_extended(formula))
-    print("Now have {} formulas".format(len(all_history)))
+    while cnf is None:
+        rnd = random_dimacs_cnf(width, n_var, n_clauses)
+        if fast_check_sat(rnd):
+            cnf = from_dimacs(rnd)
 
+    return cnf
+
+
+NUM_INITIAL_FORMULAS = 3000
+NUM_VARIABLES = 15
+WIDTH = 3
+NUM_CLAUSES = 5
+
+# TODO Mert (September 20, 2019)
+# We have a problem!
+# Formula: ((3 ∨ (-2 ∨ 1)) ∧ (-3 ∨ (-2 ∨ -1)))
+# Satisfiable where best variable was 3 with 4 branches.
+
+# TEST_CASE = expr((Type.AND, 
+#         (Type.OR,
+#          (Type.VAR, '3', None),
+#          (Type.OR, 
+#           (Type.NOT, (Type.VAR, '2', None), None),
+#           (Type.VAR, '1', None))
+#         ),
+#         (Type.OR,
+#          (Type.NOT, (Type.VAR, '3', None), None),
+#          (Type.OR, 
+#           (Type.NOT, (Type.VAR, '2', None), None),
+#           (Type.NOT, (Type.VAR, '1', None), None))
+#         )
+# ))
+
+# run_extended(TEST_CASE)
+
+
+def spawn_one_formula(i):
+    print("Running iteration", i)
+    formula = random_satisfiable_cnf(WIDTH, NUM_VARIABLES, NUM_CLAUSES)
+    hist = run_extended(formula)
+
+    print("Generated {} formulas".format(len(hist)))
+
+    return hist
+
+
+pool = multiprocessing.Pool(processes=8)
+
+all_history = set().union(*pool.imap_unordered(spawn_one_formula, range(NUM_INITIAL_FORMULAS)))
 print("Generated {} examples.".format(len(all_history)))
-with open('all_history.pickle', 'wb') as f:
+
+output_file = 'data/history_{}_vars_{}_clauses_{}_width_{}_initials.pickle'.format(NUM_VARIABLES, NUM_CLAUSES, WIDTH, NUM_INITIAL_FORMULAS)
+with open(output_file, 'wb') as f:
     pickle.dump(all_history, f)
+
+# print(spawn_one_formula(1))
