@@ -15,7 +15,7 @@ class Cryptominisat(solver.Solver):
         # We make a temporary file as `cryptominisat` writes decisions only to a file
         with tempfile.NamedTemporaryFile() as dec_hist_file:
             instance = subprocess.Popen(
-                ["cryptominisat5", "--verb", "0", "--dumpdecformodel", dec_hist_file.name],
+                ["../cryptominisat/build/cryptominisat5", "--verb", "0", "--dumpdecformodel", dec_hist_file.name],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE
             )

@@ -31,7 +31,7 @@ def expand_history(
         effective_decisions += 1
         # The point in the decision history belongs to the previous formula.
         expanded_history.append((var, decision, cur_formula))
-        # print("{} = {} for formula: {}".format(var, decision, expression.pprint(cur_formula)))
+        print("{} = {} for formula: {}".format(var, decision, expression.pprint(cur_formula)))
         cur_formula = expression.simplify(expression.assign(cur_formula, var, decision))
 
     # Add the fully reduced formula.
@@ -70,16 +70,9 @@ class HeuristicSamples(data.Dataset):
 
     def __getitem__(self, i) -> Tuple[expression.Expression, Tuple[int, bool]]:
         if len(self.next_k) == 0:
-            # Generate random satisfiable formula
-            dimacs, f, (_, history) = generator.generate_random(
-                self.clause_width,
-                self.max_num_vars,
-                self.max_num_clauses,
-                force_satisfiable=True,
-                solver=self.solver
-            )
-
-            # print("DIMACS:\n{}".format(dimacs))
+            # Generate formula
+            dimacs, f, (_, history) = generator.generate_random(3, 10, 30, force_satisfiable=True, solver=self.solver)
+            # dimacs, f, (_, history) = generator.generate_clique_color(10, 3, 4, self.solver)
             self.next_k = expand_history(f, history)
 
         var, decision, f = self.next_k.pop(0)
@@ -87,8 +80,6 @@ class HeuristicSamples(data.Dataset):
 
 
 if __name__ == '__main__':
-    sys.setrecursionlimit(10000)
-    
     solver = cryptominisat.Cryptominisat()
     samples = HeuristicSamples(
         solver,

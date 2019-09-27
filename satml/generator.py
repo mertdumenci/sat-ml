@@ -11,28 +11,38 @@ from satml import solver, types, expression
 
 def generate_pigeonhole(
     pigeons: int,
-    holes: int) -> Tuple[types.Dimacs, expression.Expression, types.Solution]:
+    holes: int,
+    solver: solver.Solver) -> Tuple[types.Dimacs, expression.Expression, types.Solution]:
     gen = subprocess.run(
         ["cnfgen", "php", str(pigeons), str(holes)],
         capture_output=True
     )
 
     assert gen.returncode == 0, gen.stderr.decode('utf-8')
-    return gen.stdout.decode('utf-8').strip()
+
+    dimacs = gen.stdout.decode('utf-8').strip()
+    s, history = solver.solve(dimacs)
+
+    return dimacs, expression.from_dimacs(dimacs), (s, history)
 
 
 def generate_clique_color(
     vertices: int,
     clique_size: int,
-    colors: int
-    ) -> Tuple[types.Dimacs, expression.Expression, types.Solution]:
+    colors: int,
+    solver: solver.Solver) -> Tuple[types.Dimacs, expression.Expression, types.Solution]:
     gen = subprocess.run(
         ["cnfgen", "cliquecoloring", str(vertices), str(clique_size), str(colors)],
         capture_output=True
     )
 
     assert gen.returncode == 0, gen.stderr.decode('utf-8')
-    return gen.stdout.decode('utf-8').strip()
+
+    dimacs = gen.stdout.decode('utf-8').strip()
+    s, history = solver.solve(dimacs)
+
+    return dimacs, expression.from_dimacs(dimacs), (s, history)
+
 
 
 def generate_random(
