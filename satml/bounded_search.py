@@ -3,6 +3,7 @@ Explores the SAT search space, tries to improve on the solver heuristic.
 Author: Mert Dumenci
 """
 
+import random
 from typing import List, Tuple
 from satml import expression, types, solver
 
@@ -33,9 +34,12 @@ def h_star(f: expression.Expression, solver: solver.Solver, depth: int, verbose=
 
     while current_formula and current_depth < depth:
         if verbose:
-            print("✅ Level {} with decision trail {}".format(current_depth, decisions))
+            print("✅ Level {}".format(current_depth))
     
-        free_variables = expression.free(current_formula)
+        free_variables = list(expression.free(current_formula))
+        # We don't want any internal Python set-iteration-order bias to seep in our variable selection metrics.
+        # Also, why is this in-place Python????
+        random.shuffle(free_variables)
         num_frontier_decisions, best_decision, best_decision_formula = -1, None, None
 
         # Try all assignments to all free variables, referencing the solver for the
@@ -52,7 +56,11 @@ def h_star(f: expression.Expression, solver: solver.Solver, depth: int, verbose=
                     sat, num_decisions = solver.solve(expression.to_dimacs(fp))
 
                 if not sat:
+                    #print("🚨 {} = {}, UNSAT".format(variable, assignment))
                     continue
+                
+                if verbose and int(variable) > 37:
+                    print("{} {} = {}, Current Best Frontier: {}, New Frontier: {}".format("💚" if num_decisions < num_frontier_decisions else "🔴", variable, assignment, num_frontier_decisions, num_decisions))
 
                 if num_frontier_decisions == -1 or num_decisions < num_frontier_decisions:
                     best_decision = current_formula, (variable, assignment)
@@ -61,6 +69,7 @@ def h_star(f: expression.Expression, solver: solver.Solver, depth: int, verbose=
 
         if verbose:
             print("💈 Best decision has frontier {}".format(num_frontier_decisions))
+
         decisions.append(best_decision)
         current_formula = best_decision_formula
         current_depth += 1
