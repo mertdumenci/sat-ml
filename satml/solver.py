@@ -10,5 +10,5 @@ from satml import types
 
 class Solver(abc.ABC):
     @abc.abstractmethod
-    def solve(self, dimacs: types.Dimacs) -> types.Solution:
+    def solve(self, dimacs: types.Dimacs) -> types.Satisfiability:
         pass

@@ -1,7 +1,10 @@
 
 """
-Implementation of a CNF formula.
+The Boolean expression library.
+Author: Mert Dumenci
 """
+
+# TODO(mert): Implement certain codepaths as iterative vs. recursive...
 
 import enum
 import collections
@@ -14,6 +17,14 @@ from satml import types
 Type = enum.Enum('Type', 'VAR AND OR NOT CONST')
 """A CNF expression."""
 Expression = collections.namedtuple('Expression', 'typ l_val r_val')
+
+
+def trivially_sat(exp: Expression) -> bool:
+    return exp.typ == Type.CONST and exp.l_val == True
+
+
+def trivially_unsat(exp: Expression) -> bool:
+    return exp.typ == Type.CONST and exp.l_val == False
 
 
 def rename(exp: Expression, var_map=None) -> Expression:

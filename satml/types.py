@@ -4,7 +4,7 @@ Types used in `satml`.
 Author: Mert Dumenci
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, Any
 
 """
 DIMACS representations of SAT problems.
@@ -12,12 +12,12 @@ DIMACS representations of SAT problems.
 Dimacs = str
 
 """
-The decision history of the solver.
-`[(literal, polarity [true = Positive, false = Negative])]`
+Whether or not a formula is satisfiable.
+`(satisfiable, num_decisions)`
 """
-DecisionHistory = List[Tuple[int, bool]]
+Satisfiability = Tuple[bool, int]
 
 """
-A SAT solution.
+Represents a branching decision.
 """
-Solution = Tuple[bool, DecisionHistory] # TODO(mert): Perhaps add interpretation here?
+Decision = Tuple[Tuple[Any], str, bool]

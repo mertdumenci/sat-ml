@@ -1,46 +1,35 @@
 
 """
-An interface to `cryptominisat`.
+Solver interface around `cryptominisat`.
 Author: Mert Dumenci
 """
 
 import subprocess
 import tempfile
+import re
 
 from satml import types, solver
 
 
 class Cryptominisat(solver.Solver):
-    def solve(self, dimacs: types.Dimacs) -> types.Solution:
-        # We make a temporary file as `cryptominisat` writes decisions only to a file
-        with tempfile.NamedTemporaryFile() as dec_hist_file:
-            instance = subprocess.Popen(
-                ["../cryptominisat/build/cryptominisat5", "--verb", "0", "--dumpdecformodel", dec_hist_file.name],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE
-            )
-            _ = instance.communicate(input=dimacs.encode())
-            
-            satisfiable = instance.returncode == 10
-            dec_hist = self._parse_decision_history(dec_hist_file)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.decisions_regex = re.compile("c\ decisions\ *:\ ([0-9]+).*")
 
-            return satisfiable, dec_hist
+    def solve(self, dimacs: types.Dimacs) -> types.Satisfiability:
+        instance = subprocess.Popen(
+            ["cryptominisat5", "--verb", "1"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE
+        )
+        out, _ = instance.communicate(input=dimacs.encode())
+        out = out.decode('utf-8')
 
-    def _parse_decision_history(
-        self, 
-        dec_hist_file: tempfile.NamedTemporaryFile) -> types.DecisionHistory:
-        """
-        Parses the decision history output of `cryptominisat`.
-        """
-        history = []
+        # Fetch satisfiability information
+        satisfiable = instance.returncode == 10
+        # Fetch how many decisions were made (we're going to try to optimize for this!)
+        matches = self.decisions_regex.search(out)
+        assert matches is not None, "No decisions output?"
+        num_decisions = int(matches.group(1))
 
-        for line in dec_hist_file:
-            line = line.decode('utf-8')
-            encoded_lit, _, = [int(f) for f in line.split(' ')]
-
-            history.append((
-                abs(encoded_lit),
-                encoded_lit > 0
-            ))
-        
-        return history
+        return satisfiable, num_decisions

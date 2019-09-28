@@ -4,90 +4,33 @@ Generates data for the training process.
 """
 
 import sys
-import torch
-from torch.utils import data
+import multiprocessing
+import argparse
 from typing import List, Tuple
 
-from satml import generator, types, expression
+import tqdm
+from satml import generator, types, expression, bounded_search
 from satml.solvers import cryptominisat
 import satml.solver
 
 
-def expand_history(
-    formula: expression.Expression,
-    history: types.DecisionHistory) -> List[Tuple[int, bool, expression.Expression]]:
-    expanded_history = []
-    effective_decisions = 0
-    cur_formula = formula
+def generator_instance(packed_args):
+    num_vars, num_clauses = packed_args
 
-    for var, decision in history:
-        # My expression library only accepts string variables.
-        var = str(var)
-
-        # Skip if this is a no-op decision.
-        if var not in expression.free(cur_formula):
-            continue
-
-        effective_decisions += 1
-        # The point in the decision history belongs to the previous formula.
-        expanded_history.append((var, decision, cur_formula))
-        print("{} = {} for formula: {}".format(var, decision, expression.pprint(cur_formula)))
-        cur_formula = expression.simplify(expression.assign(cur_formula, var, decision))
-
-    # Add the fully reduced formula.
-    expanded_history.append((None, None, cur_formula))
-    print("DONE ({} decisions, {} variables): {}".format(effective_decisions, len(expression.free(formula)), expression.pprint(cur_formula)))
-
-    return expanded_history
-
-
-class HeuristicSamples(data.Dataset):
-    """
-    Characterizes a dataset composed of `formula, decision` tuples necessary to
-    learn a SAT branching heuristic.
-    """
-    def __init__(
-        self, 
-        solver: satml.solver.Solver,
-        num_formulas: int,
-        clause_width: int,
-        max_num_vars: int,
-        max_num_clauses: int):
-        self.solver = solver
-        self.num_formulas = num_formulas
-        self.clause_width = clause_width
-        self.max_num_vars = max_num_vars
-        self.max_num_clauses = max_num_clauses
-
-        # TODO(mert): Maybe use a faster representation of a CNF
-        # rather than an AST?
-
-        # :type: List[Tuple[int, bool, expression.Expression]]
-        self.next_k = []
-
-    def __len__(self):
-        return self.num_formulas
-
-    def __getitem__(self, i) -> Tuple[expression.Expression, Tuple[int, bool]]:
-        if len(self.next_k) == 0:
-            # Generate formula
-            dimacs, f, (_, history) = generator.generate_random(3, 10, 30, force_satisfiable=True, solver=self.solver)
-            # dimacs, f, (_, history) = generator.generate_clique_color(10, 3, 4, self.solver)
-            self.next_k = expand_history(f, history)
-
-        var, decision, f = self.next_k.pop(0)
-        return f, (var, decision)
-
-
-if __name__ == '__main__':
     solver = cryptominisat.Cryptominisat()
-    samples = HeuristicSamples(
-        solver,
-        num_formulas=1,
-        clause_width=3,
-        max_num_vars=20,
-        max_num_clauses=1000
-    )
+    _, f, _ = generator.generate_random(3, num_vars=num_vars, num_clauses=num_clauses, solver=solver, force_satisfiable=True)
+    return bounded_search.h_star(f, solver, 5)
 
-    for i in range(1000):
-        samples[i]
+
+parser = argparse.ArgumentParser('Generates sat-ml data')
+parser.add_argument('--num_formulas', type=int, help='Number of formulas to generate.')
+parser.add_argument('--num_vars', type=int, help='Number of variables in random formulas.')
+parser.add_argument('--num_clauses', type=int, help='Number of clauses in random formulas.')
+parser.add_argument('--output', type=str, help='Where to write the pickled file.')
+
+args = parser.parse_args()
+
+with multiprocessing.Pool(8) as p:
+    # This is weird... Surely there's a better way of doing this.
+    pool_map = p.imap(generator_instance, ((args.num_vars, args.num_clauses) for _ in range(args.num_formulas)))
+    h_stars = list(tqdm.tqdm(pool_map, total=args.num_formulas))
