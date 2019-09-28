@@ -3,11 +3,11 @@ Explores the SAT search space, tries to improve on the solver heuristic.
 Author: Mert Dumenci
 """
 
-from typing import List
+from typing import List, Tuple
 from satml import expression, types, solver
 
 
-def h_star(f: expression.Expression, solver: solver.Solver, depth: int, verbose=False) -> List[types.Decision]:
+def h_star(f: expression.Expression, solver: solver.Solver, depth: int, verbose=False) -> List[Tuple[expression.Expression, types.Decision]]:
     """
     Given a formula, run an exhaustive search for a given number of levels
     improving the solver heuristic if possible.
@@ -55,7 +55,7 @@ def h_star(f: expression.Expression, solver: solver.Solver, depth: int, verbose=
                     continue
 
                 if num_frontier_decisions == -1 or num_decisions < num_frontier_decisions:
-                    best_decision = (variable, assignment)
+                    best_decision = current_formula, (variable, assignment)
                     num_frontier_decisions = num_decisions
                     best_decision_formula = fp
 
@@ -70,6 +70,6 @@ def h_star(f: expression.Expression, solver: solver.Solver, depth: int, verbose=
         print("Initial solver decisions: {}, found number of decisions: {}".format(initial_solver_guess, total_num_decisions))
 
     if total_num_decisions < initial_solver_guess:
-        return decisions, (initial_solver_guess, total_num_decisions)
+        return decisions, initial_solver_guess, total_num_decisions
     
     return None
