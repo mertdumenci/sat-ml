@@ -50,7 +50,7 @@ with multiprocessing.Pool(cpu_count) as p:
         pattern = os.path.join(args.sr_dimacs, "*.dimacs")
         sr_dimacs = list(glob.glob(pattern))
 
-    num_formulas = len(sr_dimacs) if sr_dimacs else args.num_formulas
+    num_formulas = len(sr_dimacs) if not args.num_formulas else args.num_formulas
 
     if sr_dimacs:
         pool_map = p.imap(generator_instance, ((0, 0, args.expansion_depth, dimacs_path) for dimacs_path in sr_dimacs[:num_formulas]))

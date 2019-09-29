@@ -27,6 +27,7 @@ def h_star(f: expression.Expression, solver: solver.Solver, depth: int, verbose=
     assert sat, "`f` must be satisfiable."
 
     decisions = []
+    num_vars = max((int(v) for v in expression.free(f)))
     num_frontier_decisions = -1
     
     if verbose:
@@ -42,6 +43,9 @@ def h_star(f: expression.Expression, solver: solver.Solver, depth: int, verbose=
         random.shuffle(free_variables)
         num_frontier_decisions, best_decision, best_decision_formula = -1, None, None
 
+        if verbose:
+            print("Initial: {}".format(expression.pprint(current_formula)))
+
         # Try all assignments to all free variables, referencing the solver for the
         # quality of the decision.
         for variable in free_variables:
@@ -49,20 +53,25 @@ def h_star(f: expression.Expression, solver: solver.Solver, depth: int, verbose=
                 fp = expression.simplify(expression.assign(current_formula, variable, assignment))
 
                 if expression.trivially_sat(fp):
+                    print("Trivially sat")
                     sat, num_decisions = True, 0
                 elif expression.trivially_unsat(fp):
+                    print("Trivially unsat")
                     sat, num_decisions = False, 0
                 else:
-                    sat, num_decisions = solver.solve(expression.to_dimacs(fp))
+                    sat, num_decisions = solver.solve(expression.to_dimacs(fp, num_vars=num_vars))
 
-                if not sat:
-                    #print("🚨 {} = {}, UNSAT".format(variable, assignment))
-                    continue
-                
-                if verbose and int(variable) > 37:
+                # Need to normalize the number of decisions because we make the solver "decide" for level more variables
+                # by injecting the total # of variables in the dimacs at every level. (so that deciding the last variable doesn't restrict the
+                # search space and artificially deflate the decisions in the solver.)
+                num_decisions = max(0, num_decisions - current_depth)
+
+                if verbose and sat:
                     print("{} {} = {}, Current Best Frontier: {}, New Frontier: {}".format("💚" if num_decisions < num_frontier_decisions else "🔴", variable, assignment, num_frontier_decisions, num_decisions))
+                    print(expression.pprint(fp))
+                    print(expression.to_dimacs(fp))
 
-                if num_frontier_decisions == -1 or num_decisions < num_frontier_decisions:
+                if sat and (num_frontier_decisions == -1 or num_decisions < num_frontier_decisions):
                     best_decision = current_formula, (variable, assignment)
                     num_frontier_decisions = num_decisions
                     best_decision_formula = fp
@@ -78,7 +87,7 @@ def h_star(f: expression.Expression, solver: solver.Solver, depth: int, verbose=
     if verbose:
         print("Initial solver decisions: {}, found number of decisions: {}".format(initial_solver_guess, total_num_decisions))
 
-    if total_num_decisions < initial_solver_guess:
+    if num_frontier_decisions > 0 and total_num_decisions < initial_solver_guess:
         return decisions, initial_solver_guess, total_num_decisions
     
     return None

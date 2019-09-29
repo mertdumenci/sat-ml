@@ -223,19 +223,23 @@ def from_dimacs(string: types.Dimacs) -> Expression:
     )
 
 
-def to_dimacs(exp: Expression) -> types.Dimacs:
+def to_dimacs(exp: Expression, num_vars=None) -> types.Dimacs:
     """Makes a Dimacs CNF file."""
-    exp = simplify(cnf(exp))
+    exp = cnf(exp)
 
     lines, num_ands = _to_dimacs(exp)
     num_conjuncts = num_ands + 1
 
     # Assemble lines (by adding line delimiters)
+    if num_conjuncts == 1:
+        lines = [lines]
+
     dimacs = '\n'.join([line + ' 0' for line in lines])
     
     # Write out the header.
-    num_variables = len(free(exp))
-    header = "p cnf {} {}\n".format(num_variables, num_conjuncts)
+    if not num_vars:
+        num_vars = max(int(v) for v in free(exp))
+    header = "p cnf {} {}\n".format(num_vars, num_conjuncts)
 
     return header + dimacs
 

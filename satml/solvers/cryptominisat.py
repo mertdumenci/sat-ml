@@ -29,7 +29,7 @@ class Cryptominisat(solver.Solver):
         satisfiable = instance.returncode == 10
         # Fetch how many decisions were made (we're going to try to optimize for this!)
         matches = self.decisions_regex.search(out)
-        assert matches is not None, "No decisions output?"
+        assert matches is not None, "No decisions output? {}".format(dimacs)
         num_decisions = int(matches.group(1))
 
         return satisfiable, num_decisions
