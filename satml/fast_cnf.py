@@ -12,7 +12,7 @@ FastCNF = List[List[int]]
 def free(cnf: FastCNF) -> Set[int]:
     """Free variables in a fast CNF."""
     var = set()
-    var.update(*cnf)
+    var.update(*((abs(v) for v in clause) for clause in cnf))
 
     return var
 
@@ -98,8 +98,8 @@ def assign(cnf: FastCNF, var: int, val: bool) -> FastCNF:
 
 
 if __name__ == '__main__':
-    DIMACS = "p cnf 3 2\n1 2 0\n3 2 0\n"
-    
+    DIMACS = "p cnf 3 2\n1 2 0\n3 -2 0\n"
+
     a = [[3, 2, 1], [-1, 3, 2], [-1, 1, 2]]
     print(a)
     rename_(a)

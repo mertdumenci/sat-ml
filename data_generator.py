@@ -38,26 +38,32 @@ args = parser.parse_args()
 
 cpu_count = 1 if args.single_threaded else multiprocessing.cpu_count()
 with multiprocessing.Pool(cpu_count) as p:
+    batch_size = 10000
     pattern = os.path.join(args.dimacs, "*.dimacs")
     names = list(glob.glob(pattern))
-    
-    # Run the search
-    pool_map = p.imap(generator_instance, ((path, args.expansion_depth) for path in names))
-    results = list(tqdm.tqdm(pool_map, total=len(names)))
 
-    # Filter out unsuccessful searches
-    results = [result for result in results if result is not None]
     dataset = []
+    cum_improvement_factor = 0
 
-    # Unpack decisions, generate statistics
-    avg_improvement_factor = 0.0
-    for decisions, solver_guess, found_decisions in results:
-        avg_improvement_factor += (solver_guess / found_decisions)
-        dataset += decisions
+    for i in range(0, len(names), batch_size):
+        print(f"Running batch {i // batch_size + 1}/{len(names) // batch_size}...")
+        cur_batch = names[i:min(i + batch_size, len(names))]
 
-    avg_improvement_factor /= len(results)
-    print("✅ {} formulas with {:.2f}x average reduction in decision trail length".format(len(dataset), avg_improvement_factor))
+        # Run the search
+        pool_map = p.imap(generator_instance, ((path, args.expansion_depth) for path in cur_batch))
+        results = list(tqdm.tqdm(pool_map, total=len(cur_batch)))
 
-    # Write to disk
-    with open(args.output, 'wb') as f:
-        pickle.dump(dataset, f)
+        # Filter out unsuccessful searches
+        results = [result for result in results if result is not None]
+
+        # Unpack decisions, count stats...
+        for decisions, solver_guess, found_decisions in results:
+            cum_improvement_factor += (solver_guess / found_decisions)
+            dataset += decisions
+
+        avg_improvement_factor = cum_improvement_factor / len(dataset)
+        print("✅ {} formulas with {:.2f}x average reduction in decision trail length".format(len(dataset), avg_improvement_factor))
+
+        # Checkpoint
+        with open(args.output + f'_batch{i}_formulas{len(dataset)}.pickle', 'wb') as f:
+            pickle.dump(dataset, f)
