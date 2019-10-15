@@ -2,7 +2,6 @@
 import os
 import numpy as np
 import pickle
-import matplotlib.pyplot as plt
 import argparse
 
 from satml import expression, fast_cnf
@@ -238,6 +237,9 @@ class GraphEmbeddingLSTM(nn.Module):
         L_0 = torch.zeros((1, n_lits, self.dimension))
         C_h = torch.zeros((1, n_clauses, self.dimension))
         C_0 = torch.zeros((1, n_clauses, self.dimension))
+
+        if torch.cuda.is_available():
+            L_h, L_0, C_h, C_0 = L_h.cuda(), L_0.cuda(), C_h.cuda(), C_0.cuda()
         
         for i in range(self.iterations):
             l_agg = torch.matmul(adj_matrix.t(), self.l_msg(L_t))
@@ -375,7 +377,7 @@ def train_model(
 
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters()) # Use the default LR schedule
-    print_every = 1
+    print_every = 150
 
     for t in range(epochs):
         # These are over the dataset, so we pull them in each epoch
