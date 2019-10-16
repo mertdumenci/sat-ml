@@ -121,6 +121,7 @@ class LSTM(nn.Module):
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, num_lstm_layers, batch_first=True)
+        self.l_relu = nn.LeakyReLU()
 
         self.linear_1 = nn.Linear(self.hidden_dim, linear_1_dim)
         self.linear_2 = nn.Linear(linear_1_dim, linear_2_dim)
@@ -130,8 +131,8 @@ class LSTM(nn.Module):
         _, (hidden, _) = self.lstm(packed_input)
         
         x = hidden[-1]
-        x = self.linear_1(x)
-        x = self.linear_2(x)
+        x = self.l_relu(self.linear_1(x))
+        x = self.l_relu(self.linear_2(x))
 
         return x
 
@@ -183,6 +184,7 @@ class Net(nn.Module):
     """Multi-layer neural net."""
     def __init__(self, input_size, output_sizes):
         super(Net, self).__init__()
+        self.l_relu = nn.LeakyReLU()
         self.layers = nn.ModuleList([
             nn.Linear(input_size if i == 0 else output_sizes[i - 1], output_size)
             for i, output_size in enumerate(output_sizes)
@@ -191,7 +193,7 @@ class Net(nn.Module):
     def forward(self, inp):
         x = inp
         for lin in self.layers:
-            x = lin(x)
+            x = self.l_relu(lin(x))
 
         return x
 
