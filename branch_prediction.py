@@ -44,11 +44,15 @@ num_training = int(len(decisions) * TRAIN_SPLIT)
 decisions_training, decisions_test = decisions[:num_training], decisions[num_training:]
 
 
-def encode_policy(policy):
+def encode_policy(policy, num_vars):
     """Maps a policy tuple to an ordinal class."""
     idx, branch = policy
     zero_idx = idx - 1
-    return zero_idx * 2 + int(branch)
+    
+    if branch is True:
+        return zero_idx
+    else:
+        return num_vars + zero_idx
 
 
 def one_hot(length, index):
@@ -265,8 +269,11 @@ class GraphEmbeddingLSTM(nn.Module):
         max_vars = max(num_vars)
 
         currently_seen_vars = 0
-        for n in num_vars:
+        for i, n in enumerate(num_vars):
             lits = torch.zeros(max_vars * 2)
+            if torch.cuda.is_available():
+                lits = lits.cuda()
+
             lits[:n] = L_imp[currently_seen_vars:currently_seen_vars + n]
             lits[n:2 * n] = L_imp[total_vars + currently_seen_vars:total_vars + currently_seen_vars + n]
 
@@ -285,7 +292,7 @@ class LSTMDataset(data.Dataset):
     
     def __getitem__(self, index):
         formula, policy = self.fastcnf_decisions[index]
-        return tokenize_fastcnf(formula), encode_policy(policy)
+        return tokenize_fastcnf(formula), encode_policy(policy, len(fast_cnf.free(formula)))
 
 
 def lstm_collator(batch):
@@ -317,7 +324,7 @@ class AdjacencyDataset(data.Dataset):
     
     def __getitem__(self, index):
         formula, policy = self.fastcnf_decisions[index]
-        return formula, encode_policy(policy)
+        return formula, encode_policy(policy, len(fast_cnf.free(formula)))
     
 def adj_collator(batch):
     """Expects `batch` to be a list of (X, y) pairs."""
@@ -371,7 +378,7 @@ def train_model(
         'collate_fn': collate_fn,
         'batch_size': batch_size,
         'shuffle': True,
-        'num_workers': 4
+        'num_workers': 0
     }
 
     loader_train = data.DataLoader(dataset=dataset_training, **loader_opts)
@@ -379,7 +386,7 @@ def train_model(
 
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters()) # Use the default LR schedule
-    print_every = 25
+    print_every = 1
 
     for t in range(epochs):
         # These are over the dataset, so we pull them in each epoch
@@ -393,8 +400,6 @@ def train_model(
             
             model.zero_grad()
             y_pred = model(X, *batch[2:])
-            print(y_pred.shape)
-
             loss = loss_fn(y_pred, y)
             
             loss.backward()
