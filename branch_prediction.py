@@ -261,11 +261,12 @@ class GraphEmbeddingLSTM(nn.Module):
         # Unpack the batch adjacency matrix
         L_imp_unpacked = []
         
-        total_vars = len(L_imp) // 2
+        total_vars = sum(num_vars)
         currently_seen_vars = 0
         for n in num_vars:
             p_lits = L_imp[currently_seen_vars:currently_seen_vars + n]
             n_lits = L_imp[total_vars + currently_seen_vars:total_vars + currently_seen_vars + n]
+
             lits = torch.cat((p_lits, n_lits))
             
             L_imp_unpacked.append(lits)
@@ -356,7 +357,7 @@ def train_model(
     dataset_training,
     dataset_validation,
     collate_fn,
-    batch_size=64,
+    batch_size=128,
     epochs=150
     ):
     """Training loop."""
@@ -369,7 +370,7 @@ def train_model(
         'collate_fn': collate_fn,
         'batch_size': batch_size,
         'shuffle': True,
-        'num_workers': 8
+        'num_workers': 4
     }
 
     loader_train = data.DataLoader(dataset=dataset_training, **loader_opts)
@@ -377,7 +378,7 @@ def train_model(
 
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters()) # Use the default LR schedule
-    print_every = 150
+    print_every = 25
 
     for t in range(epochs):
         # These are over the dataset, so we pull them in each epoch
