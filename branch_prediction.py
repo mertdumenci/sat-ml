@@ -262,16 +262,17 @@ class GraphEmbeddingLSTM(nn.Module):
         L_imp_unpacked = []
         
         total_vars = sum(num_vars)
+        max_vars = max(num_vars)
+
         currently_seen_vars = 0
         for n in num_vars:
-            p_lits = L_imp[currently_seen_vars:currently_seen_vars + n]
-            n_lits = L_imp[total_vars + currently_seen_vars:total_vars + currently_seen_vars + n]
+            lits = torch.zeros(max_vars * 2)
+            lits[:n] = L_imp[currently_seen_vars:currently_seen_vars + n]
+            lits[n:2 * n] = L_imp[total_vars + currently_seen_vars:total_vars + currently_seen_vars + n]
 
-            lits = torch.cat((p_lits, n_lits))
-            
             L_imp_unpacked.append(lits)
             currently_seen_vars += n
-            
+
         return torch.stack(L_imp_unpacked)
 
 
@@ -392,6 +393,8 @@ def train_model(
             
             model.zero_grad()
             y_pred = model(X, *batch[2:])
+            print(y_pred.shape)
+
             loss = loss_fn(y_pred, y)
             
             loss.backward()
