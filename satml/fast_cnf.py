@@ -17,6 +17,16 @@ def free(cnf: FastCNF) -> Set[int]:
     return var
 
 
+def max_var(cnf: FastCNF) -> int:
+    """Returns the max variable in a cnf."""
+    m = -1
+    for clause in cnf:
+        for var in clause:
+            m = max(m, abs(var))
+
+    return m
+
+
 def from_dimacs(dimacs: str) -> FastCNF:
     """Parses a DIMACS file into a fast CNF expression."""
     clauses = []
