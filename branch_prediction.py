@@ -333,6 +333,13 @@ class AdjacencyDataset(data.Dataset):
     
     def __getitem__(self, index):
         formula, policy = self.fastcnf_decisions[index]
+        # c = []
+        # for cl in formula:
+        #     for v in cl:
+        #         c.append(v)
+        
+        # mode = torch.mode(torch.abs(torch.ShortTensor(c))).values.item()
+
         return formula, encode_policy(policy, len_vocab)
     
 def adj_collator(batch):
@@ -387,7 +394,7 @@ def train_model(
         'collate_fn': collate_fn,
         'batch_size': batch_size,
         'shuffle': True,
-        'num_workers': 0
+        'num_workers': 4
     }
 
     loader_train = data.DataLoader(dataset=dataset_training, **loader_opts)
@@ -395,7 +402,7 @@ def train_model(
 
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters()) # Use the default LR schedule
-    print_every = 1
+    print_every = 25
 
     for t in range(epochs):
         # These are over the dataset, so we pull them in each epoch
@@ -433,8 +440,6 @@ def train_model(
                         f"Step {step + 1}/{len(loader_train)} "
                         f"Train loss: {rl_a} "
                         f"Train acc: {ra_a}")
-
-                    running_loss, running_accuracy, steps_accrued = 0, 0, 0
                     
         val_acc = evaluate_validation(model, loader_validation)
         print(f"Validation accuracy: {val_acc}")
@@ -456,5 +461,5 @@ if args.model == 'lstm':
 
     train_model(lstm_model, lstm_dataset_train, lstm_dataset_val, lstm_collator)
 elif args.model == 'graph':
-    adj_model = GraphEmbeddingLSTM(140, 25)
+    adj_model = GraphEmbeddingLSTM(50, 15)
     train_model(adj_model, adj_dataset_train, adj_dataset_val, adj_collator)
