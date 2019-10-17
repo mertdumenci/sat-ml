@@ -385,15 +385,11 @@ def train_model(
     dataset_training,
     dataset_validation,
     collate_fn,
-    batch_size=128,
+    batch_size,
     epochs=150
     ):
     """Training loop."""
 
-    if torch.cuda.device_count() > 1:
-        print("Using", torch.cuda.device_count(), "GPUs")
-        model = nn.DataParallel(model)
-    
     if torch.cuda.is_available():
         model = model.cuda()
 
@@ -469,5 +465,5 @@ if args.model == 'lstm':
 
     train_model(lstm_model, lstm_dataset_train, lstm_dataset_val, lstm_collator)
 elif args.model == 'graph':
-    adj_model = GraphEmbeddingLSTM(args.graph_embedding_size, graph.iterations)
-    train_model(adj_model, adj_dataset_train, adj_dataset_val, adj_collator)
+    adj_model = GraphEmbeddingLSTM(args.graph_embedding_size, args.graph_iterations)
+    train_model(adj_model, adj_dataset_train, adj_dataset_val, adj_collator, batch_size=args.batch_size)
