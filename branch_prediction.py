@@ -12,6 +12,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data as data
+from torch.utils.tensorboard import SummaryWriter
+
+writer = SummaryWriter()
 
 parser = argparse.ArgumentParser('Trains a branch predictor')
 parser.add_argument('--model', type=str, help='type of model to use', choices=['lstm', 'graph'])
@@ -420,13 +423,23 @@ def train_model(
                 running_accuracy += float(num_accurate) / y.shape[0]
             
                 if step % print_every == 0:
+                    rl_a = running_loss / steps_accrued
+                    ra_a = running_accuracy / steps_accrued
+
+                    writer.add_scalar('Loss/train', rl_a, t * len(loader_train) + step)
+                    writer.add_scalar('Accuracy/train', ra_a, t * len(loader_train) + step)
+
                     print(f"Epoch {t + 1}/{epochs} "
                         f"Step {step + 1}/{len(loader_train)} "
-                        f"Train loss: {running_loss / steps_accrued} "
-                        f"Train acc: {running_accuracy / steps_accrued}")
+                        f"Train loss: {rl_a} "
+                        f"Train acc: {ra_a}")
+
+                    running_loss, running_accuracy, steps_accrued = 0, 0, 0
                     
         val_acc = evaluate_validation(model, loader_validation)
         print(f"Validation accuracy: {val_acc}")
+
+        writer.add_scalar('Accuracy/val', val_acc, t)
 
         # Checkpoint
         torch.save(model.state_dict(), os.path.join(args.checkpoint, f"{args.model}-{t}epoch-{val_acc}valacc.pt"))
