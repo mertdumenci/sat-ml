@@ -31,6 +31,7 @@ parser.add_argument('--graph-iterations', type=int, help='the graph iterations',
 parser.add_argument('--lstm-num-layers', type=int, help='num lstm layer', default=3)
 parser.add_argument('--lstm-embedding-size', type=int, help='the lstm embedding size', default=50)
 parser.add_argument('--lstm-linear-size', type=int, help='the lstm linear layer size', default=50)
+parser.add_argument('--lstm-token-vars', type=int, help='the maximum number of variables supported')
 
 args = parser.parse_args()
 
@@ -49,11 +50,13 @@ num_training = int(len(decisions) * args.train_split)
 decisions_train, decisions_val = decisions[:num_training], decisions[num_training:]
 print(f"Have {len(decisions_train)} training examples, {len(decisions_val)} validation examples")
 
-dataset_constr, model, collate_fn = None, None, None
+dataset_constr, dataset_args, model, collate_fn = None, None, None, None
 
 if args.model == 'lstm':
     dataset_constr = datasets.lstm.LSTMDataset
-    dataset_train = dataset_constr(decisions_train)
+    dataset_args = {'max_var': args.lstm_token_vars}
+
+    dataset_train = dataset_constr(decisions_train, **dataset_args)
 
     sample, _ = dataset_train[0]
     model = models.lstm.LSTM(
@@ -72,7 +75,7 @@ elif args.model == 'graph':
 
     collate_fn = datasets.graph.collator
 
-dataset_val = dataset_constr(decisions_val)
+dataset_val = dataset_constr(decisions_val, **dataset_args)
 
 loader_opts = {
     'collate_fn': collate_fn,
@@ -92,7 +95,7 @@ def val_loader_make(subset=0.1):
     for i in indices:
         sampled_dec.append(decisions_val[i])
 
-    return data.DataLoader(dataset_constr(sampled_dec), **loader_opts)
+    return data.DataLoader(dataset_constr(sampled_dec, **dataset_args), **loader_opts)
 
 
 loader_train = data.DataLoader(dataset_train, **loader_opts)
@@ -100,4 +103,4 @@ loader_train = data.DataLoader(dataset_train, **loader_opts)
 
 print(model)
 print('➡️  Starting training...')
-training.train_model(model, loader_train, val_loader_make, args.epochs, args.log_interval)
+training.train_model(model, loader_train, val_loader_make, args.epochs, args.log_interval, args.checkpoint)

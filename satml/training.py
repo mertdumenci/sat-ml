@@ -1,9 +1,10 @@
 
+import os
+
 import torch
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.tensorboard import SummaryWriter
 
@@ -11,7 +12,7 @@ from ignite import engine, metrics
 from tqdm import tqdm
 
 
-def train_model(model, train_loader, val_loader_make, epochs, log_interval):
+def train_model(model, train_loader, val_loader_make, epochs, log_interval, checkpoint_dir):
     writer = SummaryWriter()
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -67,6 +68,11 @@ def train_model(model, train_loader, val_loader_make, epochs, log_interval):
             .format(engine.state.epoch, avg_accuracy, avg_loss))
 
         pbar.n = pbar.last_print_n = 0
+
+        # Checkpoint
+        model_name = type(model).__name__
+        checkpoint_path = os.path.join(checkpoint_dir, f"{model_name}-{engine.state.epoch}epoch-{avg_accuracy}valacc.pt")
+        torch.save(model.state_dict(), checkpoint_path)
 
     trainer.run(train_loader, max_epochs=epochs)
     pbar.close()

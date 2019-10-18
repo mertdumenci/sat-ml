@@ -39,12 +39,15 @@ def collator(batch):
 
 
 class LSTMDataset(data.Dataset):
-    def __init__(self, decisions):
+    def __init__(self, decisions, max_var=None):
         self.decisions = decisions
         
         # Extract the maximum number of variables in the dataset, we use this
         # for labeling.
-        self.max_var = max((fast_cnf.max_var(f) for f, _ in decisions))
+        if max_var is None:
+            self.max_var = max((fast_cnf.max_var(f) for f, _ in decisions))
+        else:
+            self.max_var = max_var
         
     def __len__(self):
         return len(self.decisions)
