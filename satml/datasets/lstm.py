@@ -34,11 +34,8 @@ def tokenize(formula, max_var):
 def collator(batch):
     """Expects `batch` to be a list of (X, y) pairs."""
     X, y = zip(*batch)
-
-    seq_lens = torch.LongTensor([len(seq) for seq in X])
-    padded_sequences = nn.utils.rnn.pad_sequence(X, batch_first=True)
-
-    return (padded_sequences, seq_lens), torch.LongTensor(y)
+    padded_sequences = nn.utils.rnn.pad_sequence(X, batch_first=True, padding_value=-1)
+    return padded_sequences, torch.LongTensor(y)
 
 
 class LSTMDataset(data.Dataset):
@@ -58,7 +55,7 @@ class LSTMDataset(data.Dataset):
         if branch is True:
             label = var - 1
         else:
-            label = self.max_var + label
+            label = self.max_var + (var - 1)
     
         return tokenize(formula, self.max_var), label
 

@@ -15,15 +15,7 @@ class LSTM(nn.Module):
 
         self.net = Net(hidden_dim, linear_outputs)
 
-    def forward(self, batch_tuple):
+    def forward(self, padded_sequences):
         """Expects a list of padded sequences."""
-        padded_sequences, seq_lens = batch_tuple
-        packed_batch = nn.utils.rnn.pack_padded_sequence(
-            padded_sequences,
-            seq_lens,
-            batch_first=True,
-            enforce_sorted=False
-        )
-
-        _, (hidden, _) = self.lstm(packed_batch)
+        _, (hidden, _) = self.lstm(padded_sequences)
         return self.net(hidden[-1])

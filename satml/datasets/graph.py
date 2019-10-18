@@ -76,6 +76,6 @@ class AdjacencyDataset(data.Dataset):
         if branch is True:
             label = var - 1
         else:
-            label = self.max_var + label
+            label = self.max_var + (var - 1)
 
         return formula, label

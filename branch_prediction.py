@@ -1,6 +1,7 @@
 
 import os
 import pickle
+import random
 import argparse
 
 from satml import fast_cnf, models, datasets, training
@@ -48,14 +49,13 @@ num_training = int(len(decisions) * args.train_split)
 decisions_train, decisions_val = decisions[:num_training], decisions[num_training:]
 print(f"Have {len(decisions_train)} training examples, {len(decisions_val)} validation examples")
 
-dataset_train, dataset_val, model, collate_fn = None, None, None, None
+dataset_constr, model, collate_fn = None, None, None
 
 if args.model == 'lstm':
-    dataset_train = datasets.lstm.LSTMDataset(decisions_train)
-    dataset_val = datasets.lstm.LSTMDataset(decisions_val)
+    dataset_constr = datasets.lstm.LSTMDataset
+    dataset_train = dataset_constr(decisions_train)
 
     sample, _ = dataset_train[0]
-
     model = models.lstm.LSTM(
         sample.shape[1],
         args.lstm_embedding_size,
@@ -65,13 +65,14 @@ if args.model == 'lstm':
 
     collate_fn = datasets.lstm.collator
 elif args.model == 'graph':
-    dataset_train = datasets.graph.AdjacencyDataset(decisions_train)
-    dataset_val = datasets.graph.AdjacencyDataset(decisions_val)
+    dataset_constr = datasets.graph.AdjacencyDataset
+    dataset_train = dataset_constr(decisions_train)
 
-    sample, _ = dataset_train[0]
     model = models.graph.GraphEmbeddingLSTM(args.graph_embedding_size, args.graph_iterations)
 
     collate_fn = datasets.graph.collator
+
+dataset_val = dataset_constr(decisions_val)
 
 loader_opts = {
     'collate_fn': collate_fn,
@@ -80,8 +81,23 @@ loader_opts = {
     'num_workers': 4
 }
 
-loader_train = data.DataLoader(dataset_train, **loader_opts)
-loader_val = data.DataLoader(dataset_val, **loader_opts)
+def val_loader_make(subset=0.1):
+    if subset == 1:
+        return data.DataLoader(dataset_val, **loader_opts)
+    
+    size = int(len(decisions_val) * subset)
+    indices = random.sample(list(range(len(decisions_val))), k=size)
 
+    sampled_dec = []
+    for i in indices:
+        sampled_dec.append(decisions_val[i])
+
+    return data.DataLoader(dataset_constr(sampled_dec), **loader_opts)
+
+
+loader_train = data.DataLoader(dataset_train, **loader_opts)
+
+
+print(model)
 print('➡️  Starting training...')
-training.train_model(model, loader_train, loader_val, args.epochs, args.log_interval)
+training.train_model(model, loader_train, val_loader_make, args.epochs, args.log_interval)
