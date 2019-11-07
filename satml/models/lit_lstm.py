@@ -32,6 +32,9 @@ class LitLSTM(nn.Module):
 
         # For each formula, pack into embedding matrix
         for i, var_mapping in enumerate(var_mappings):
+            if i >= batch_size:
+                break
+    
             # Read the embeddings of each variable
             for var, occurrence in var_mapping:
                 # i is the batch index
