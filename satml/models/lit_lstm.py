@@ -27,6 +27,8 @@ class LitLSTM(nn.Module):
 
         # Unpack the LSTM outputs. (Assuming that the variable names are normalized and ordered.)
         embedding_matrix = torch.zeros((batch_size, self.max_label, self.hidden_dim * 2))
+        if torch.cuda.is_available():
+            embedding_matrix = embedding_matrix.cuda()
 
         # For each formula, pack into embedding matrix
         for i, var_mapping in enumerate(var_mappings):
@@ -40,9 +42,8 @@ class LitLSTM(nn.Module):
                 if var < 0:
                     offset += self.max_label / 2
 
-                embedding_matrix[i, offset] = embedding
+                embedding_matrix[i, int(offset)] = embedding
     
         # Project each embedding to a score
         projected = self.net(embedding_matrix.reshape(batch_size * self.max_label, -1))
         return projected.reshape(batch_size, self.max_label)
-
