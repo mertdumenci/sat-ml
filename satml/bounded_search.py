@@ -45,12 +45,6 @@ def h_star(dimacs: types.Dimacs, solver: solver.Solver, depth: int) -> List[Tupl
         for variable in free_variables:
             for assignment in [True, False]:
                 fp = fast_cnf.assign(current_formula, variable, assignment)
-            
-                # if expression.trivially_sat(fp):
-                #     sat, num_decisions = True, 0
-                # elif expression.trivially_unsat(fp):
-                #     sat, num_decisions = False, 0
-                # else:
                 sat, num_decisions = solver.solve(fast_cnf.to_dimacs(fp, num_vars=num_vars))
 
                 # Need to normalize the number of decisions, because every time we assign to the maximally named variable,

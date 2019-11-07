@@ -47,7 +47,7 @@ if args.num_formulas:
     decisions = decisions[:args.num_formulas]
     print(f"Restricted to {len(decisions)} decisions by --num-formulas")
 
-num_training = 0 if args.evaluate_model else int(len(decisions) * args.train_split)
+num_training = 1 if args.evaluate_model else int(len(decisions) * args.train_split)
 decisions_train, decisions_val = decisions[:num_training], decisions[num_training:]
 print(f"Have {len(decisions_train)} training examples, {len(decisions_val)} validation examples")
 
@@ -70,6 +70,7 @@ if args.model == 'lstm':
     collate_fn = datasets.lstm.collator
 elif args.model == 'graph':
     dataset_constr = datasets.graph.AdjacencyDataset
+    dataset_args = {}
     dataset_train = dataset_constr(decisions_train)
 
     model = models.graph.GraphEmbeddingLSTM(args.graph_embedding_size, args.graph_iterations)
@@ -77,7 +78,8 @@ elif args.model == 'graph':
     collate_fn = datasets.graph.collator
 
 if args.evaluate_model:
-    model.load_state_dict(torch.load(args.evaluate_model))
+    device = torch.device('gpu:0') if torch.cuda.is_available() else torch.device('cpu')
+    model.load_state_dict(torch.load(args.evaluate_model, map_location=device))
 
 dataset_val = dataset_constr(decisions_val, **dataset_args)
 

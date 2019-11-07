@@ -25,11 +25,15 @@ class GraphEmbeddingLSTM(nn.Module):
         self.c_msg = Net(dimension, [dimension, dimension, dimension])
 
         # The update LSTM
-        self.l_u = nn.LSTM(dimension, dimension)
+        self.l_u = nn.LSTM(dimension * 2, dimension)
         self.c_u = nn.LSTM(dimension, dimension)
 
         # The classifier
         self.l_cls = Net(dimension, [dimension, dimension, 1])
+
+    def flip(self, embedding_matrix):
+        halfway = int(embedding_matrix.shape[0] / 2)
+        return torch.cat((embedding_matrix[halfway:], embedding_matrix[:halfway]))
 
     def forward(self, X_tuple):
         adj_matrix, num_vars = X_tuple
@@ -63,7 +67,8 @@ class GraphEmbeddingLSTM(nn.Module):
             # Clause update uses literal embedding aggregations
             _, (C_h, _) = self.c_u(l_agg.unsqueeze(0), (C_h, C_0))
             # Literal update uses clause embedding aggregations
-            _, (L_h, _) = self.l_u(c_agg.unsqueeze(0), (L_h, L_0))
+            l_input = torch.cat((c_agg, self.flip(L_t)), dim=1)
+            _, (L_h, _) = self.l_u(l_input.unsqueeze(0), (L_h, L_0))
 
             # Unpack the hidden states to go back in the loop
             C_t = C_h.squeeze(0)
