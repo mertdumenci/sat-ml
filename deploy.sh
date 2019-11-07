@@ -9,7 +9,7 @@ mkdir checkpoints
 
 # Set up environment
 python3 -m venv venv && source venv/bin/activate
-pip install torch torch-ignite numpy tqdm tensorboard future
+pip install torch pytorch-ignite numpy tqdm tensorboard future
 git clone "$REPO_URL" && cd "sat-ml"
 
 mkdir runs

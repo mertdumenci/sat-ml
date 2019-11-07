@@ -100,7 +100,7 @@ loader_opts = {
     'num_workers': 4
 }
 
-def val_loader_make(subset=0.1):
+def val_loader_make(subset=1):
     if subset == 1:
         return data.DataLoader(dataset_val, **loader_opts)
     

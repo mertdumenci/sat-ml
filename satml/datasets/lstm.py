@@ -13,7 +13,7 @@ def one_hot(index, length):
 
 
 def tokenize(formula, max_var):
-    token_length = max_var + 2 # For AND and OR
+    token_length = 2 * max_var + 2 # For AND and OR
 
     tokenized = []
     for i, clause in enumerate(formula):
@@ -26,7 +26,11 @@ def tokenize(formula, max_var):
             if j > 0:
                 tokenized.append(one_hot(-2, token_length))
             
-            tokenized.append(one_hot(literal - 1, token_length))
+            abs_lit = abs(literal)
+            if literal < 0:
+                abs_lit = max_var + abs_lit
+        
+            tokenized.append(one_hot(abs_lit - 1, token_length))
 
     return torch.stack(tokenized)
 
