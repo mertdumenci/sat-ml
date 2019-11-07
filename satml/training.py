@@ -16,6 +16,10 @@ def train_model(model, train_loader, val_loader_make, epochs, log_interval, chec
     writer = SummaryWriter()
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+    if torch.cuda.device_count() > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        model = torch.nn.DataParallel(model)
+
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters())
 
