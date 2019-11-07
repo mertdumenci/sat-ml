@@ -15,7 +15,9 @@ class LSTM(nn.Module):
 
         self.net = Net(hidden_dim, linear_outputs)
 
-    def forward(self, padded_sequences):
+    def forward(self, inp):
         """Expects a list of padded sequences."""
+        padded_sequences, _ = inp
+
         _, (hidden, _) = self.lstm(padded_sequences)
         return self.net(hidden[-1])

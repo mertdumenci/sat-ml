@@ -1,11 +1,10 @@
 
-DATA_NAME="sr_20_batch740000_formulas606136.pickle"
-DATA_URL="https://mdumenci.s3.us-east-2.amazonaws.com/$DATA_NAME"
+DATA_URL="https://mdumenci.s3.us-east-2.amazonaws.com/sr_20_batch740000_formulas606136.pickle"
 REPO_URL="https://github.com/mertdumenci/sat-ml.git"
 
 # Download data, set up folders
 wget "$DATA_URL"
-mkdir checkpoints
+mkdir checkpoint
 
 # Set up environment
 python3 -m venv venv && source venv/bin/activate

@@ -15,6 +15,10 @@ def one_hot(index, length):
 def tokenize(formula, max_var):
     token_length = 2 * max_var + 2 # For AND and OR
 
+    seen_vars = set()
+    # Where is the first occurrence of each variable?
+    var_mapping = []
+
     tokenized = []
     for i, clause in enumerate(formula):
         # Intersperse conjunct tokens
@@ -25,21 +29,29 @@ def tokenize(formula, max_var):
             # Intersperse disjunct tokens
             if j > 0:
                 tokenized.append(one_hot(-2, token_length))
-            
+
             abs_lit = abs(literal)
             if literal < 0:
                 abs_lit = max_var + abs_lit
         
+            if literal not in seen_vars:
+                var_mapping.append((literal, len(tokenized)))
+                seen_vars.add(literal)
+
             tokenized.append(one_hot(abs_lit - 1, token_length))
 
-    return torch.stack(tokenized)
+    # Sort by variable.
+    var_mapping = sorted(var_mapping, key=lambda m: m[0])
+    return torch.stack(tokenized), torch.LongTensor(var_mapping)
 
 
 def collator(batch):
     """Expects `batch` to be a list of (X, y) pairs."""
     X, y = zip(*batch)
-    padded_sequences = nn.utils.rnn.pad_sequence(X, batch_first=True, padding_value=-1)
-    return padded_sequences, torch.LongTensor(y)
+    sequences, var_mappings = zip(*X)
+
+    padded_sequences = nn.utils.rnn.pad_sequence(sequences, batch_first=True, padding_value=-1)
+    return (padded_sequences, var_mappings), torch.LongTensor(y)
 
 
 class LSTMDataset(data.Dataset):

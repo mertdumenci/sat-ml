@@ -64,17 +64,18 @@ if args.model == 'lstm' or args.model == 'litlstm':
 
     if args.model == 'lstm':
         model = models.lstm.LSTM(
-            sample.shape[1],
+            sample[0].shape[1],
             args.lstm_embedding_size,
             [args.lstm_linear_size, args.lstm_linear_size, dataset_train.max_label],
             args.lstm_num_layers
         )
     else:
         model = models.lit_lstm.LitLSTM(
-            sample.shape[1],
+            sample[0].shape[1],
             args.lstm_embedding_size,
             [args.lstm_linear_size, args.lstm_linear_size, 1],
-            args.lstm_num_layers
+            args.lstm_num_layers,
+            dataset_train.max_label
         )
 
     collate_fn = datasets.lstm.collator
