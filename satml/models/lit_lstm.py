@@ -40,9 +40,9 @@ class LitLSTM(nn.Module):
                 # Find the embedding matrix offset
                 offset = abs(var) - 1
                 if var < 0:
-                    offset += self.max_label / 2
+                    offset += int(self.max_label / 2)
 
-                embedding_matrix[i, int(offset)] = embedding
+                embedding_matrix[i, offset] = embedding
     
         # Project each embedding to a score
         projected = self.net(embedding_matrix.reshape(batch_size * self.max_label, -1))
