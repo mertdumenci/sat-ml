@@ -1,15 +1,13 @@
 
-DATA_URL="https://mdumenci.s3.us-east-2.amazonaws.com/sr_20_batch740000_formulas606136.pickle"
-REPO_URL="https://github.com/mertdumenci/sat-ml.git"
 
 # Download data, set up folders
-wget "$DATA_URL"
+wget "https://mdumenci.s3.us-east-2.amazonaws.com/sr_20_batch740000_formulas606136.pickle"
 mkdir checkpoint
 
 # Set up environment
 python3 -m venv venv && source venv/bin/activate
 pip install torch pytorch-ignite numpy tqdm tensorboard future
-git clone "$REPO_URL" && cd "sat-ml"
+git clone "https://github.com/mertdumenci/sat-ml.git" && cd "sat-ml"
 
 mkdir runs
 tensorboard --logdir runs &
